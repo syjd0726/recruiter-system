@@ -1,240 +1,275 @@
-// 공통 버튼
-export function PrimaryBtn({ children, onClick, disabled }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        background: disabled ? '#2E3250' : 'linear-gradient(135deg, #4F8EF7, #7C3AED)',
-        color: disabled ? '#4B5380' : 'white',
-        border: 'none', borderRadius: 10, padding: '13px',
-        fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        textAlign: 'center', width: '100%',
-      }}
-    >
-      {children}
-    </button>
-  )
-}
+import { useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { useSystemSettings } from '../hooks/useSupabase'
+import { PrimaryBtn, OutlineBtn, Field, SelectBox, TextInput, ChipGroup, GangSelect, InfoNote } from '../components/UI'
 
-// 점선 버튼
-export function OutlineBtn({ children, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: '#1A1D27', border: '1px dashed #2E3250',
-        color: '#8B92B8', borderRadius: 10, padding: '10px',
-        fontSize: 11, fontWeight: 700, fontFamily: 'inherit',
-        cursor: 'pointer', textAlign: 'center', width: '100%',
-      }}
-    >
-      {children}
-    </button>
-  )
-}
+const STAGES = ['찾기', '합자', '육따기', '영따기', '복음방', '센확', '수신']
 
-// 위험 버튼
-export function DangerBtn({ children, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: 'rgba(239,68,68,0.12)',
-        border: '1px solid rgba(239,68,68,0.35)',
-        color: '#EF4444', borderRadius: 10, padding: '12px',
-        fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
-        cursor: 'pointer', textAlign: 'center', width: '100%',
-      }}
-    >
-      {children}
-    </button>
-  )
+const PURPOSES_BY_STAGE = {
+  '찾기': ['친교(정보파악)', '인터뷰', '상담', '동아리'],
+  '합자': ['상담', '육따기'],
+  '육따기': ['육따기 굳히기', '영따기', '특강'],
+  '영따기': ['영따기 굳히기', '복음방', '개강진 면접', '특강', '프리뷰파티'],
+  '복음방': ['복음방', '개강진 면접', '프리뷰파티', 'OT'],
+  '센확': ['OT', '개강진 면접', '프리뷰파티'],
+  '수신': ['수강신청서'],
 }
-
-// 인풋 필드
-export function Field({ label, children }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {label && <div style={{ fontSize: 10, color: '#8B92B8', fontWeight: 500 }}>{label}</div>}
-      {children}
-    </div>
-  )
-}
-
-// 드롭다운처럼 보이는 선택 박스
-export function SelectBox({ value, onChange, options, placeholder }) {
-  return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      style={{
-        background: '#1A1D27', border: '1px solid #2E3250',
-        borderRadius: 8, padding: '9px 12px', fontSize: 12,
-        color: value ? '#E8EAFF' : '#4B5380', fontFamily: 'inherit',
-        width: '100%', appearance: 'none',
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234B5380' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-        backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
-      }}
-    >
-      {placeholder && <option value="">{placeholder}</option>}
-      {options.map(opt => (
-        <option key={opt.value ?? opt} value={opt.value ?? opt}>
-          {opt.label ?? opt}
-        </option>
-      ))}
-    </select>
-  )
-}
-
-// 텍스트 인풋
-export function TextInput({ value, onChange, placeholder }) {
-  return (
-    <input
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      style={{
-        background: '#1A1D27', border: '1px solid #2E3250',
-        borderRadius: 8, padding: '9px 12px', fontSize: 12,
-        color: '#E8EAFF', fontFamily: 'inherit', width: '100%',
-      }}
+{/* 복음방 회차 체크 */}
+{stage === '복음방' && (
+  <Field label="복음방 회차">
+    <ChipGroup
+      options={['1회', '2회', '3회']}
+      selected={purpose.includes('복음방') ? purpose.split(' ')[1] : ''}
+      onSelect={(v) => setPurpose('복음방 ' + v)}
     />
-  )
-}
+  </Field>
+)}
 
-// 텍스트 에어리어
-export function TextArea({ value, onChange, placeholder, rows = 3 }) {
-  return (
-    <textarea
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      rows={rows}
-      style={{
-        background: '#1A1D27', border: '1px solid #2E3250',
-        borderRadius: 8, padding: '9px 12px', fontSize: 12,
-        color: '#E8EAFF', fontFamily: 'inherit', width: '100%',
-        resize: 'none',
-      }}
-    />
-  )
-}
+export default function BoardNew({ go }) {
+  const { settings } = useSystemSettings()
+  const [month, setMonth] = useState('2026-05')
+  const [termType, setTermType] = useState('청년')
+  const [stage, setStage] = useState('찾기')
+  const [name, setName] = useState('')
+  const [contact, setContact] = useState('')
+  const [recruitType, setRecruitType] = useState('')
+  const [inducer, setInducer] = useState('')
+  const [teacher, setTeacher] = useState('')
+  const [nextMeetAt, setNextMeetAt] = useState('')
+  const [purpose, setPurpose] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [dbMatch, setDbMatch] = useState(null)
+  const [done, setDone] = useState([])
 
-// 칩 선택
-export function ChipGroup({ options, selected, onSelect, multi = false }) {
-  const isSelected = (opt) => multi
-    ? selected?.includes(opt)
-    : selected === opt
+  const recruitTypes = settings.recruit_types || ['노방', '통신', 'UP', '묵대', '가족', '지인']
+  const isNewStage = stage === '찾기'
+  const purposes = PURPOSES_BY_STAGE[stage] || []
 
-  const handleClick = (opt) => {
-    if (multi) {
-      const arr = selected || []
-      onSelect(arr.includes(opt) ? arr.filter(o => o !== opt) : [...arr, opt])
+  // 단계 변경 시 목적 초기화
+  function handleStageChange(s) {
+    setStage(s)
+    setPurpose('')
+  }
+
+  // DB 중복 확인
+  async function checkDuplicate() {
+    if (!name || !contact) return
+    const { data } = await supabase
+      .from('people')
+      .select('*')
+      .eq('contact', contact)
+      .limit(1)
+    if (data && data.length > 0) {
+      setDbMatch(data[0])
     } else {
-      onSelect(opt)
+      setDbMatch(null)
+      alert('DB에 동일한 연락처가 없어요 — 신규 등록해요!')
     }
   }
 
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-      {options.map(opt => (
-        <div
-          key={opt}
-          onClick={() => handleClick(opt)}
-          style={{
-            padding: '6px 12px', borderRadius: 16, fontSize: 11,
-            fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
-            border: isSelected(opt) ? '1px solid #4F8EF7' : '1px solid #2E3250',
-            background: isSelected(opt) ? '#4F8EF7' : '#1A1D27',
-            color: isSelected(opt) ? 'white' : '#8B92B8',
-          }}
-        >
-          {opt}
-        </div>
-      ))}
-    </div>
-  )
-}
+  // 전광판 보고 저장
+  async function handleSubmit() {
+    if (!name || !recruitType || !purpose) {
+      alert('이름, 섭외 유형, 만남 목적은 필수예요')
+      return
+    }
+    if (!isNewStage && !teacher) {
+      alert('합자 이상은 교사가 필수예요')
+      return
+    }
+    setLoading(true)
+    try {
+      let personId
 
-// 개강 선택 (월 + 성격)
-export function GangSelect({ month, type, onMonthChange, onTypeChange, months, types }) {
-  return (
-    <div style={{ display: 'flex', gap: 6 }}>
-      <select
-        value={month}
-        onChange={e => onMonthChange(e.target.value)}
-        style={{
-          flex: 1, background: '#1A1D27', border: '1px solid #4F8EF7',
-          borderRadius: 8, padding: '8px 12px', fontSize: 12,
-          fontWeight: 700, color: '#4F8EF7', fontFamily: 'inherit',
-        }}
-      >
-        <option value="">월 선택</option>
-        {(months || []).map(m => <option key={m} value={m}>{m}</option>)}
-      </select>
-      <select
-        value={type}
-        onChange={e => onTypeChange(e.target.value)}
-        style={{
-          flex: 1, background: '#1A1D27', border: '1px solid #4F8EF7',
-          borderRadius: 8, padding: '8px 12px', fontSize: 12,
-          fontWeight: 700, color: '#4F8EF7', fontFamily: 'inherit',
-        }}
-      >
-        <option value="">성격 선택</option>
-        {(types || ['청년', '협력교회', '자정부']).map(t => <option key={t} value={t}>{t}</option>)}
-      </select>
-    </div>
-  )
-}
+      if (isNewStage) {
+        // 찾기: 새 사람 추가
+        const { data: person, error } = await supabase
+          .from('people')
+          .insert({
+            name,
+            contact,
+            stage: '찾기',
+            status: '보유',
+            term_month: month,
+            term_type: termType,
+            recruit_type: recruitType,
+            inducer,
+            current_teacher: teacher || null,
+            next_meet_at: nextMeetAt || null,
+          })
+          .select()
+          .single()
+        if (error) throw error
+        personId = person.id
+      }
 
-// 로딩 스피너
-export function Loading() {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-      <div style={{ color: '#4B5380', fontSize: 12 }}>불러오는 중...</div>
-    </div>
-  )
-}
+      // meet_reports에 전광판 보고 저장
+      await supabase.from('meet_reports').insert({
+        person_id: personId,
+        report_type: '전광판',
+        report_date: new Date().toISOString().split('T')[0],
+        stage_from: isNewStage ? 'DB' : stage,
+        stage_to: stage,
+        purpose,
+        teacher,
+        next_meet_at: nextMeetAt || null,
+        next_meet_purpose: purpose,
+      })
 
-// 빈 상태
-export function Empty({ message = '데이터가 없어요' }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-      <div style={{ color: '#4B5380', fontSize: 12 }}>{message}</div>
-    </div>
-  )
-}
-
-// 섹션 구분 레이블
-export function SectionLabel({ children }) {
-  return (
-    <div style={{
-      fontSize: 9, color: '#4B5380', letterSpacing: '1.5px',
-      textTransform: 'uppercase', padding: '4px 0',
-      borderTop: '1px solid #2E3250', marginTop: 2,
-    }}>
-      {children}
-    </div>
-  )
-}
-
-// 정보 노트
-export function InfoNote({ children, color = 'blue' }) {
-  const colors = {
-    blue: { bg: 'rgba(79,142,247,0.06)', border: 'rgba(79,142,247,0.18)', text: '#4F8EF7' },
-    yellow: { bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.18)', text: '#F59E0B' },
-    red: { bg: 'rgba(239,68,68,0.07)', border: 'rgba(239,68,68,0.22)', text: '#FCA5A5' },
+      setDone(prev => [...prev, { name, stage, purpose }])
+      resetForm()
+      alert('⚡ 전광판 보고 완료!')
+    } catch (e) {
+      alert('오류: ' + e.message)
+    }
+    setLoading(false)
   }
-  const c = colors[color] || colors.blue
+
+  function resetForm() {
+    setName('')
+    setContact('')
+    setRecruitType('')
+    setInducer('')
+    setTeacher('')
+    setNextMeetAt('')
+    setPurpose('')
+    setDbMatch(null)
+  }
+
   return (
-    <div style={{
-      background: c.bg, border: `1px solid ${c.border}`,
-      borderRadius: 8, padding: '8px 11px', fontSize: 10, color: c.text,
-    }}>
-      {children}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+
+      {/* 네비 */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 14px 10px', borderBottom: '1px solid #2E3250' }}>
+        <div onClick={() => go('home')} style={{ fontSize: 13, color: '#4F8EF7', cursor: 'pointer' }}>← 홈</div>
+        <div style={{ fontSize: 14, fontWeight: 700 }}>전광판 보고</div>
+        <div style={{ width: 40 }} />
+      </div>
+
+      {/* 폼 */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {/* 완료 카드 */}
+        {done.map((d, i) => (
+          <div key={i} style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 9, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 9 }}>
+            <div style={{ fontSize: 16 }}>✅</div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#22C55E' }}>{d.name} {d.stage} 보고 완료</div>
+              <div style={{ fontSize: 10, color: '#8B92B8' }}>방금 발송</div>
+            </div>
+          </div>
+        ))}
+
+        {/* 개강 선택 */}
+        <div>
+          <div style={{ fontSize: 9, color: '#4B5380', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 4 }}>개강 선택</div>
+          <GangSelect
+            month={month} type={termType}
+            onMonthChange={setMonth} onTypeChange={setTermType}
+            months={['2026-03', '2026-04', '2026-05', '2026-06']}
+          />
+        </div>
+
+        {/* 단계 선택 */}
+        <div>
+          <div style={{ fontSize: 9, color: '#4B5380', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 4 }}>단계</div>
+          <ChipGroup options={STAGES} selected={stage} onSelect={handleStageChange} />
+        </div>
+
+        {/* 안내 */}
+        {isNewStage
+          ? <InfoNote>✦ 찾기는 신규 — 이름·연락처 입력</InfoNote>
+          : <InfoNote color="yellow">✦ 합자 이상 — 보유 데이터에서 자동 불러오기 (교사 필수)</InfoNote>
+        }
+
+        {/* 이름 */}
+        <Field label="이름 *">
+          <TextInput value={name} onChange={setName} placeholder="섭외자 이름" />
+        </Field>
+
+        {/* 연락처 */}
+        <Field label="연락처">
+          <TextInput value={contact} onChange={setContact} placeholder="010-0000-0000" />
+          {contact.length > 9 && (
+            <div onClick={checkDuplicate} style={{ fontSize: 10, color: '#4F8EF7', cursor: 'pointer', marginTop: 3 }}>
+              DB 중복 확인 →
+            </div>
+          )}
+        </Field>
+
+        {/* DB 매칭 팝업 */}
+        {dbMatch && (
+          <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, color: '#F59E0B', fontWeight: 700, marginBottom: 7 }}>⚠️ DB에 같은 연락처가 있어요 — 같은 분인가요?</div>
+            <div style={{ background: '#22263A', borderRadius: 8, padding: '7px 9px', marginBottom: 7 }}>
+              <div style={{ fontSize: 12, fontWeight: 700 }}>{dbMatch.name}</div>
+              <div style={{ fontSize: 10, color: '#8B92B8' }}>{dbMatch.contact} · {dbMatch.stage} · {dbMatch.recruit_type}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                onClick={() => { setName(dbMatch.name); setContact(dbMatch.contact); setDbMatch(null) }}
+                style={{ flex: 1, padding: 7, borderRadius: 7, background: '#4F8EF7', color: 'white', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+              >
+                같은 사람 — 이번 개강으로 이동
+              </button>
+              <button
+                onClick={() => setDbMatch(null)}
+                style={{ flex: 1, padding: 7, borderRadius: 7, background: '#22263A', color: '#8B92B8', border: '1px solid #2E3250', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+              >
+                다른 사람
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 섭외 유형 */}
+        <Field label="섭외 유형 *">
+          <SelectBox value={recruitType} onChange={setRecruitType} options={recruitTypes} placeholder="선택하세요" />
+        </Field>
+
+        {/* 인도자 / 교사 */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          <Field label="인도자">
+            <TextInput value={inducer} onChange={setInducer} placeholder="인도자" />
+          </Field>
+          <Field label={isNewStage ? '교사 (선택)' : '교사 *'}>
+            <TextInput value={teacher} onChange={setTeacher} placeholder={isNewStage ? '선택' : '필수'} />
+          </Field>
+        </div>
+
+        {/* 다음 만남 일시 */}
+        <Field label="다음 만남 일시">
+          <input
+            type="datetime-local"
+            value={nextMeetAt}
+            onChange={e => setNextMeetAt(e.target.value)}
+            style={{ background: '#1A1D27', border: '1px solid #2E3250', borderRadius: 8, padding: '9px 12px', fontSize: 12, color: '#E8EAFF', fontFamily: 'inherit', width: '100%' }}
+          />
+        </Field>
+
+        {/* 만남 목적 */}
+        <Field label="만남 목적 *">
+          <SelectBox value={purpose} onChange={setPurpose} options={purposes} placeholder="선택하세요" />
+        </Field>
+
+        {/* 발송 버튼 */}
+        <PrimaryBtn onClick={handleSubmit} disabled={loading}>
+          {loading ? '저장 중...' : '⚡ 전광판 보고 발송'}
+        </PrimaryBtn>
+        <OutlineBtn onClick={resetForm}>
+          + 다음 사람 추가 보고
+        </OutlineBtn>
+      </div>
+
+      {/* 하단 네비 */}
+      <div style={{ display: 'flex', borderTop: '1px solid #2E3250', background: '#1A1D27' }}>
+        {[['🏠', '홈', 'home'], ['📅', '일정', 'meetList'], ['👥', '목록', 'dataList'], ['⚙️', '설정', 'home']].map(([icon, label, target]) => (
+          <div key={label} onClick={() => go(target)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 4px 6px', fontSize: 8, color: '#4B5380', gap: 2, cursor: 'pointer' }}>
+            <div style={{ fontSize: 16 }}>{icon}</div>
+            {label}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
